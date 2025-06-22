@@ -19,9 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Contracts\Contracts.csproj" />
     <ProjectReference Include="..\AuthService.Application\AuthService.Application.csproj" />
     <ProjectReference Include="..\AuthService.Infrastructure\AuthService.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\..\Contracts\Contracts.csproj" />
   </ItemGroup>
 
 </Project>
