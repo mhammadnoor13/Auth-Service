@@ -1,5 +1,7 @@
-﻿using AuthService.Application.Auth;
+﻿using AuthService.Api.Consumers;
+using AuthService.Application.Auth;
 using AuthService.Application.Common.Interfaces;
+using AuthService.Application.UseCases;
 using AuthService.Infrastructure.Persistence;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,10 +11,11 @@ using Serilog;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
-
+/*
 // 1️⃣ options
 builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection("Jwt"));
+*/
 
 // 2️⃣ Mongo
 builder.Services.AddSingleton<IMongoClient>(_ =>
@@ -24,7 +27,7 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddMassTransit(busConfigurator =>
 {
     busConfigurator.SetKebabCaseEndpointNameFormatter();
-
+    busConfigurator.AddConsumer<CreateUserConsumer>();
     busConfigurator.UsingRabbitMq((context, cfg) =>
     {
         cfg.Host(new Uri(builder.Configuration["MessageBroker:Host"]!), h =>
@@ -43,8 +46,10 @@ builder.Services
     .AddScoped<IPasswordHashProvider, AspNetPasswordHashProvider>()
     .AddScoped<IJwtTokenProvider, JwtTokenProvider>()
     .AddScoped<IUnitOfWork, MongoUnitOfWork>()
-    .AddScoped<IAuthService, AuthService.Application.Auth.AuthService>();
+    .AddScoped<IAuthService, AuthService.Application.Auth.AuthService>()
+    .AddScoped< ICreateUserUseCase,CreateUserUseCase>();
 
+/*
 // 5️⃣ auth / authz
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
       .AddJwtBearer(opts =>
@@ -62,7 +67,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                                   Encoding.UTF8.GetBytes(cfg.Key)),
               ClockSkew = TimeSpan.FromSeconds(30)
           };
-      });
+      });*/
 
 builder.Services.AddAuthorization();
 

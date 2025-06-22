@@ -22,6 +22,15 @@ public sealed class User
             PasswordHash = passwordHash,
             EmailConfirmed = false
         };
+    public static User Create(string email)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            Email = email,
+            PasswordHash = null!,
+            EmailConfirmed = false
+        };
 
     public void ConfirmEmail() => EmailConfirmed = true;
+    public void SetPasswordHash(string passwordHash) => PasswordHash = passwordHash;
 }
