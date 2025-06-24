@@ -1,7 +1,8 @@
 ﻿using MassTransit;
-using Contracts.Commands;
-using Contracts.Responses;
+
 using AuthService.Application.UseCases;
+using Contracts.Shared.Commands;
+using Contracts.Shared.Responses;
 
 namespace AuthService.Api.Consumers
 {

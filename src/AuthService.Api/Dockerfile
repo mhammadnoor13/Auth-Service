@@ -1,34 +1,55 @@
-# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-# This stage is used when running from VS in fast mode (Default for Debug configuration)
+# ------------------------------------------------------------
+# 1) Runtime base image
+# ------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
-EXPOSE 8081
 
-
-# This stage is used to build the service project
+# ------------------------------------------------------------
+# 2) Build stage
+# ------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["src/AuthService.Api/AuthService.Api.csproj", "src/AuthService.Api/"]
-COPY ["src/AuthService.Application/AuthService.Application.csproj", "src/AuthService.Application/"]
-COPY ["Contracts/Contracts.csproj", "Contracts/"]
-COPY ["src/AuthService.Domain/AuthService.Domain.csproj", "src/AuthService.Domain/"]
-COPY ["src/AuthService.Infrastructure/AuthService.Infrastructure.csproj", "src/AuthService.Infrastructure/"]
-RUN dotnet restore "./src/AuthService.Api/AuthService.Api.csproj"
+
+# 2.1) Shared Contracts csproj for ProjectReference
+COPY ["Common/Contracts/Contracts.Shared/Contracts.Shared.csproj", "Common/Contracts/Contracts.Shared/"]
+
+# 2.2) Copy AuthService projects for fast restore
+COPY ["Services/Auth-Service/src/AuthService.Api/AuthService.Api.csproj",       "Services/Auth-Service/src/AuthService.Api/"]
+COPY ["Services/Auth-Service/src/AuthService.Application/AuthService.Application.csproj", "Services/Auth-Service/src/AuthService.Application/"]
+COPY ["Services/Auth-Service/src/AuthService.Domain/AuthService.Domain.csproj", "Services/Auth-Service/src/AuthService.Domain/"]
+COPY ["Services/Auth-Service/src/AuthService.Infrastructure/AuthService.Infrastructure.csproj", "Services/Auth-Service/src/AuthService.Infrastructure/"]
+
+# 2.3) Restore (will pull in Contracts.Shared)
+RUN dotnet restore "Services/Auth-Service/src/AuthService.Api/AuthService.Api.csproj"
+
+# 2.4) Copy all source (AuthService.Api + its dependencies + shared contracts)
 COPY . .
-WORKDIR "/src/src/AuthService.Api"
-RUN dotnet build "./AuthService.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# This stage is used to publish the service project to be copied to the final stage
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./AuthService.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+# 2.5) Publish from the API project folder
+WORKDIR "/src/Services/Auth-Service/src/AuthService.Api"
+RUN dotnet publish "AuthService.Api.csproj" \
+    -c $BUILD_CONFIGURATION \
+    -o /app/publish \
+    /p:UseAppHost=false
 
-# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
+# ------------------------------------------------------------
+# 3) Final runtime image
+# ------------------------------------------------------------
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "AuthService.Api.dll"]
+
+# 3.1) Bring in the wait-for-rabbit script
+USER root
+COPY ["scripts/wait-for-rabbit.sh", "/wait-for-rabbit.sh"]
+RUN chmod +x /wait-for-rabbit.sh
+# drop back to the app user
+USER $APP_UID
+
+# 3.2) Copy the published output
+COPY --from=build /app/publish .
+
+# 3.3) Launch only after RabbitMQ is ready
+ENTRYPOINT ["/wait-for-rabbit.sh", "rabbitmq", "dotnet", "AuthService.Api.dll"]

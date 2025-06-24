@@ -4,7 +4,7 @@ using MassTransit;
 using AuthService.Application.Common.Interfaces;
 using FluentResults;
 using AuthService.Domain.Entities;
-using Contracts;
+using Contracts.Shared;
 
 namespace AuthService.Application.Auth;
 
