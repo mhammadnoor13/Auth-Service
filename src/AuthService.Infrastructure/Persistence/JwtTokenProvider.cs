@@ -14,7 +14,7 @@ public sealed class JwtTokenProvider : IJwtTokenProvider
 
     public JwtTokenProvider(IOptions<JwtOptions> opt) => _opt = opt.Value;
 
-    public string GenerateAccessToken(string userId, string email)
+    public string GenerateAccessToken(string userId, string email, string role)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opt.Key));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -25,7 +25,8 @@ public sealed class JwtTokenProvider : IJwtTokenProvider
             claims: new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userId),
-                new Claim(JwtRegisteredClaimNames.Email, email)
+                new Claim(JwtRegisteredClaimNames.Email, email),
+                new Claim(ClaimTypes.Role,role)
             },
             expires: DateTime.UtcNow.AddMinutes(_opt.AccessTokenMinutes),
             signingCredentials: creds);

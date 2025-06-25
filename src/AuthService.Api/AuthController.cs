@@ -16,10 +16,8 @@ public sealed class AuthController : ControllerBase
         if (result.IsSuccess)
             return Ok(result.Value);
 
-        // take the first error message (or join them if you want all)
         var message = result.Errors.First().Message;
 
-        // 400 by default; override statusCode if you need a different one
         return Problem(statusCode: 400, detail: message);
     }
 

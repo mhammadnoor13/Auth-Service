@@ -41,16 +41,17 @@ public sealed class AuthService : IAuthService
         // publish outbox event (MassTransit will store it atomically with Mongo)
         await _bus.Publish<IUserRegistered>(new
         {
-            user.Id,
-            cmd.Email,
-            cmd.FirstName,
-            cmd.LastName,
-            cmd.Speciality
+            Id = user.Id,
+            Email = cmd.Email,
+            FirstName = cmd.FirstName,
+            LastName = cmd.LastName,
+            Speciality = cmd.Speciality,
+
         }, ct);
 
         await _uow.CommitAsync(ct);
 
-        var access = _jwt.GenerateAccessToken(user.Id.ToString(), user.Email);
+        var access = _jwt.GenerateAccessToken(user.Id.ToString(), user.Email,"Consultant");
         var (refresh, _) = _jwt.GenerateRefreshToken();
 
         return Result.Ok(new AuthResult(access, refresh));
@@ -62,7 +63,7 @@ public sealed class AuthService : IAuthService
         if (user is null || !_hash.Verify(cmd.Password, user.PasswordHash))
             return Result.Fail<AuthResult>("Invalid credentials");
 
-        var access = _jwt.GenerateAccessToken(user.Id.ToString(), user.Email);
+        var access = _jwt.GenerateAccessToken(user.Id.ToString(), user.Email,"Consultant");
         var (refresh, _) = _jwt.GenerateRefreshToken();
 
         return Result.Ok(new AuthResult(access, refresh));
