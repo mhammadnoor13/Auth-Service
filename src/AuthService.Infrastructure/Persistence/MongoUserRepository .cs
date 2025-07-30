@@ -15,7 +15,6 @@ public sealed class MongoUserRepository : IUserRepository
     {
         _col = db.GetCollection<User>("Users");
 
-        // ensure email is unique – run once on startup
         var emailIdx = Builders<User>.IndexKeys.Ascending(u => u.Email);
         _col.Indexes.CreateOne(
             new CreateIndexModel<User>(emailIdx, new CreateIndexOptions { Unique = true }));
