@@ -3,27 +3,26 @@ using AuthService.Application.Auth;
 using AuthService.Application.Common.Interfaces;
 using AuthService.Application.UseCases;
 using AuthService.Infrastructure.Persistence;
+using AuthService.Infrastructure.Security;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
 using Serilog;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1️⃣ options
 builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection("Jwt"));
 
 
-// 2️⃣ Mongo
 builder.Services.AddSingleton<IMongoClient>(_ =>
     new MongoClient(builder.Configuration.GetConnectionString("Mongo")));
 builder.Services.AddScoped(sp =>
     sp.GetRequiredService<IMongoClient>().GetDatabase("AuthDb"));
 
-// 3️⃣ MassTransit + Mongo outbox
 builder.Services.AddMassTransit(busConfigurator =>
 {
     busConfigurator.SetKebabCaseEndpointNameFormatter();
@@ -36,21 +35,20 @@ builder.Services.AddMassTransit(busConfigurator =>
             h.Password(builder.Configuration["MessageBroker:Password"]);
         });
 
-        cfg.ConfigureEndpoints(context);          // auto-create endpoints
+        cfg.ConfigureEndpoints(context);          
     });
 });
 
-// 4️⃣ DI for app & infra
 builder.Services
     .AddScoped<IUserRepository, MongoUserRepository>()
     .AddScoped<IPasswordHashProvider, AspNetPasswordHashProvider>()
-    .AddScoped<IJwtTokenProvider, JwtTokenProvider>()
+    .AddScoped<IJwtTokenProvider, JwtTokenProviderHandle>()
     .AddScoped<IUnitOfWork, MongoUnitOfWork>()
     .AddScoped<IAuthService, AuthService.Application.Auth.AuthService>()
-    .AddScoped< ICreateUserUseCase,CreateUserUseCase>();
+    .AddScoped<ICreateUserUseCase,CreateUserUseCase>()
+    .AddScoped<IJwtTokenHandler, JwtTokenHandler>();
 
 
-// 5️⃣ auth / authz
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
       .AddJwtBearer(opts =>
       {
@@ -71,15 +69,40 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// 6️⃣ misc
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen( c =>
+{
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme.\r\n\r\n" +
+                  "Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\n" +
+                  "Example: \"Bearer eyJhbGciOiJIUzI1Ni…\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement {
+        {
+            new OpenApiSecurityScheme {
+                Reference = new OpenApiReference {
+                    Type = ReferenceType.SecurityScheme,
+                    Id   = "Bearer"
+                },
+                Scheme = "Bearer",
+                Name   = "Authorization",
+                In     = ParameterLocation.Header,
+            },
+            Array.Empty<string>()
+        }
+    });
+}
+);
 
 builder.Host.UseSerilog((ctx, lc) =>
     lc.ReadFrom.Configuration(ctx.Configuration));
 
-// ---- Build & run ----
 var app = builder.Build();
 
 app.UseSwagger();

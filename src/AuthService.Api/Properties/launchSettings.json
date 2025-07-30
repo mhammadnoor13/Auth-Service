@@ -5,7 +5,11 @@
       "launchBrowser": true,
       "launchUrl": "swagger",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ConnectionStrings__Mongo": "mongodb://localhost:27018",
+        "MessageBroker__Host": "rabbitmq://localhost:5672",
+        "MessageBroker__Username": "guest",
+        "MessageBroker__Password": "guest"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5130"
