@@ -1,6 +1,4 @@
 ﻿namespace AuthService.Application.Auth;
 
-/// <summary>
-/// Returned to the client after successful register / login.
-/// </summary>
+// Returned to the client after successful register / login.
 public record AuthResult(string AccessToken, string RefreshToken);

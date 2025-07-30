@@ -38,7 +38,6 @@ public sealed class AuthService : IAuthService
         var user = User.Create(cmd.Email, _hash.Hash(cmd.Password));
         await _users.AddAsync(user, ct);
 
-        // publish outbox event (MassTransit will store it atomically with Mongo)
         await _bus.Publish<IUserRegistered>(new
         {
             Id = user.Id,
